@@ -1,0 +1,37 @@
+{
+  "name": "WebSocket Demo",
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "description": "How to use WebSockets in your Chrome Extension.",
+  "version": "1.0",
+  "manifest_version": 3,
+  "minimum_chrome_version": "116",
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Click to open panel",
+    "default_icon": "icons/socket-inactive.png"
+  },
+  "permissions": [
+    "webNavigation",
+    "scripting",
+    "activeTab",
+    "alarms",
+    "sidePanel",
+    "tabs",
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.tab.com.au/racing/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ]
+}
