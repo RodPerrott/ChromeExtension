@@ -2,7 +2,7 @@
 document.getElementById('scrapeButton').addEventListener('click', () => {
     // Send a message to the content script to request data
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: "courseName" }, function (response) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "status" }, function (response) {
             const resultDiv = document.getElementById('result');
 
             resultDiv.textContent = response.data;

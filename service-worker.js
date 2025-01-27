@@ -1,3 +1,5 @@
+
+
 const TAB_RACING = 'https://www.tab.com.au';
 const TEN_SECONDS_MS = 10 * 1000;
 let webSocket = null;
@@ -35,6 +37,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
       path: 'sidepanel.html',
       enabled: true
     });
+
   } else {
     // Disables the side panel on all other sites
     await chrome.sidePanel.setOptions({
@@ -43,6 +46,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
     });
   }
 });
+
+
+
 
 /*
 chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
@@ -141,7 +147,7 @@ function keepAlive() {
   );
 }
 
-function PollTab() {
+function PollTabOld() {
 
   (async () => {
     const response = await chrome.runtime.sendMessage({ action: "poll" });
@@ -152,15 +158,16 @@ function PollTab() {
   })();
 }
 
-//function PollTab() {
-//  //(async () => {
-//  const response = chrome.runtime.sendMessage({ action: "poll" });
-// do something with response here, not outside the function
-//  console.log("service-worker response : " + response.data);
-//  webSocket.send(response.data);
-//})();
+function PollTab() {
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    chrome.tabs.sendMessage(tabs[0].id, { action: "race" }, function (response) {
+      console.log("service-worker response : " + response.data);
 
-//}
+      webSocket.send(response.data);
+
+    });
+  });
+}
 
 
 
