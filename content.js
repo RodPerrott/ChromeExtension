@@ -1,6 +1,6 @@
 // import Race from 'race.js';
 
-class MyRace {
+class Race {
     Debug = "";
     RaceDate;
     CourseName = "";
@@ -19,47 +19,79 @@ class MyRace {
     FixedWin = [];
     FixedPlace = [];
 
-
     constructor(courseName, raceNo) {
         this.RaceDate = new Date();
         this.CourseName = courseName;
         this.RaceNo = raceNo;
-
     }
-
 }
+
+/*
+class RaceInfo {
+    CourseName = "";
+    RaceNo = 0;
+    RaceStatus = "";
+
+    constructor(courseName, raceNo, raceStatus) {
+        this.CourseName = courseName;
+        this.RaceNo = raceNo;
+        this.RaceStatus = raceStatus;
+    }
+}
+    */
 
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.action === "raceInfo") {
+
+        var courseName = GetCourseName();
+        var raceNo = GetRaceNo();
+        var status = GetRaceStatus();
+
+        var raceInfo = new RaceInfo(courseName, raceNo, status);
+
+        sendResponse({ data: raceInfo });
+    }
+});
+
+
+
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.action === "clickRaceNo") {
+        var result = false;
+        var raceNo = Number(request.data);
+
+        var raceNoElements = document.getElementsByClassName('meeting-info-race');
+        if ((raceNoElements) && (raceNoElements.length > raceNo)) {
+            raceNoElements[raceNo - 1].click();
+            result = true;
+        }
+        sendResponse({ data: result });
+    }
+});
+
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.action === "title") {
+
+        const newTitle = request.data;
+        document.title = newTitle;
+
+    }
+});
+
+/*
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (request.action === "scrape") {
         console.log('Action  : scrape');
-        //const titles = document.querySelectorAll('header'); // Example: Scrape all <h1> elements
-        //const scrapedData = Array.from(titles).map(title => title.textContent);
-
-        //console.log("Scrape Result " + scrapedData);
 
         var courseName = "abc";
         var courseElement = document.getElementsByClassName('meeting-info-description');
         if (courseElement) {
-            //var text = await courseElement.item(0).GetTextContentAsync();
-            //console.log('Course Element Length :' + courseElement.length);
             courseName = courseElement.item(0).textContent;
-
         }
-        //}
-
-
-        //}
-
-        //sendResponse({ data: 'Hello World ha Ha\n' });
-
         sendResponse({ data: courseName });
-        //sendResponse({ data: "abcdef\n" });
-
-        //return true; // run async
     }
 });
-
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (request.action === "courseName") {
@@ -69,7 +101,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
             var text = courseElement.item(0).textContent;
             courseName = text.trim();
-
         }
         var raceElement = document.getElementsByClassName('race-number');
         if (raceElement) {
@@ -81,11 +112,11 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                 raceNo = raceNo.trim();
                 courseName += " Race " + raceNo;
             }
-
         }
         sendResponse({ data: courseName });
     }
 });
+*/
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (request.action === "status") {
@@ -119,7 +150,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         }
 
         // Race Number
-
         var raceNo = 0;
         var raceElement = document.getElementsByClassName('race-number');
         if (raceElement) {
@@ -148,13 +178,14 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             raceStatus = "race-metadata-list not found";
 
         // New Race
-
-        var race = new MyRace(courseName, raceNo);
+        var race = new Race(courseName, raceNo);
         race.RaceStatus = raceStatus;
         const currentUrl = document.location.href;
         race.Url = currentUrl;
         var raceDate = CheckForRaceDate(currentUrl);
         race.RaceDate = raceDate;
+
+
 
         // Race Horses
         var pseudoBody = document.getElementsByClassName('pseudo-body');
@@ -321,4 +352,47 @@ function CheckForRaceDate(url) {
         });
     }
     return raceDate;
+}
+
+
+
+function GetCourseName() {
+    var courseName = "";
+    var courseElement = document.getElementsByClassName('meeting-info-description');
+    if (courseElement) {
+        var text = courseElement.item(0).textContent;
+        courseName = text.trim();
+    }
+    return courseName;
+}
+
+function GetRaceNo() {
+    var raceNo = 0;
+    var raceElement = document.getElementsByClassName('race-number');
+    if (raceElement) {
+
+        var text = raceElement.item(0).textContent;
+        var raceNoStr = text.trim();
+        if (raceNoStr.startsWith("R")) {
+            raceNoStr = raceNoStr.replace("R", "");
+            raceNo = Number(raceNoStr.trim());
+        }
+    }
+    return raceNo;
+}
+
+function GetRaceStatus() {
+    var status = "Not found";
+    var raceElement = document.getElementsByClassName('race-metadata-list');
+    if ((raceElement) && (raceElement.length == 1)) {
+        var statusElement = raceElement[0].getElementsByClassName('status-text');
+        if ((statusElement) && (statusElement.length == 1)) {
+            status = statusElement[0].textContent;
+        }
+        else
+            status = "status-text not found"
+    }
+    else
+        status = "race-metadata-list not found";
+    return status;
 }

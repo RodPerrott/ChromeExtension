@@ -2,10 +2,14 @@
 document.getElementById('scrapeButton').addEventListener('click', () => {
     // Send a message to the content script to request data
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: "status" }, function (response) {
-            const resultDiv = document.getElementById('result');
+        chrome.tabs.sendMessage(tabs[0].id, { action: "raceInfo", data: 7 }, function (response) {
+            //const resultDiv = document.getElementById('result');
 
-            resultDiv.textContent = response.data;
+            console.log(response.data);
+
+            //var courseName = response.data.CourseName;
+
+            //resultDiv.textContent = courseName;
         });
     });
 });
@@ -17,6 +21,7 @@ document.getElementById('connectButton').addEventListener('click', () => {
     })();
 });
 
+/*
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (request.action === "poll") {
         console.log('Poll');
@@ -65,3 +70,4 @@ async function GetCourseName() {
     })();
 }
 
+*/
