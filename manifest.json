@@ -30,6 +30,7 @@
         "https://www.tab.com.au/racing/*"
       ],
       "js": [
+        "race.js",
         "raceinfo.js",
         "content.js"
       ]

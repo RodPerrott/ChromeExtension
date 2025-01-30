@@ -1,48 +1,9 @@
 // import Race from 'race.js';
 
-class Race {
-    Debug = "";
-    RaceDate;
-    CourseName = "";
-    RaceNo = 0;
-    RaceStatus = "";
-    Url = "";
-    HorseNo = [];
-    HorseName = [];
-    Scratched = []
-    TrainerName = [];
-    JockeyName = [];
-    Weight = [];
-    Rating = [];
-    Win = [];
-    Place = [];
-    FixedWin = [];
-    FixedPlace = [];
-
-    constructor(courseName, raceNo) {
-        this.RaceDate = new Date();
-        this.CourseName = courseName;
-        this.RaceNo = raceNo;
-    }
-}
-
-/*
-class RaceInfo {
-    CourseName = "";
-    RaceNo = 0;
-    RaceStatus = "";
-
-    constructor(courseName, raceNo, raceStatus) {
-        this.CourseName = courseName;
-        this.RaceNo = raceNo;
-        this.RaceStatus = raceStatus;
-    }
-}
-    */
 
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.action === "raceInfo") {
+    if (request.action === 'raceInfo') {
 
         var courseName = GetCourseName();
         var raceNo = GetRaceNo();
@@ -54,10 +15,8 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
 });
 
-
-
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.action === "clickRaceNo") {
+    if (request.action === 'clickRaceNo') {
         var result = false;
         var raceNo = Number(request.data);
 
@@ -71,7 +30,63 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 });
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.action === "title") {
+    if (request.action === 'clickExacta') {
+        var result = false;
+        var selectionsElements = document.getElementsByClassName('tbc-nav-tabular-item-link');
+        if ((selectionsElements) && (selectionsElements.length > 0)) {
+
+            for (var index = 0; index < selectionsElements.length; index++) {
+
+                var href = selectionsElements[index].getAttribute('href');
+                if (href.includes('Exacta')) {
+                    result = true;
+                    selectionsElements[index].click();
+                }
+            }
+        }
+        sendResponse({ data: result });
+    }
+});
+
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.action === 'clickWinPlace') {
+        var result = false;
+        var selectionsElements = document.getElementsByClassName('tbc-nav-tabular-item-link');
+        if ((selectionsElements) && (selectionsElements.length > 0)) {
+
+            for (var index = 0; index < selectionsElements.length; index++) {
+
+                var href = selectionsElements[index].getAttribute('href');
+                if (href.includes('Win')) {
+                    result = true;
+                    selectionsElements[index].click();
+                }
+            }
+        }
+        sendResponse({ data: result });
+    }
+});
+
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.action === 'clickApprox') {
+        var result = false;
+        var approxElements = document.getElementsByClassName('approximates-button');
+        if ((approxElements) && (approxElements.length = 1)) {
+
+            var toggleFlucsElements = approxElements[0].getElementsByClassName('toggle-flucs-button');
+            if ((toggleFlucsElements) && (toggleFlucsElements.length = 1)) {
+                result = true;
+                toggleFlucsElements[0].click();
+            }
+        }
+
+        sendResponse({ data: result });
+    }
+});
+
+
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.action === 'title') {
 
         const newTitle = request.data;
         document.title = newTitle;
@@ -79,48 +94,10 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
 });
 
-/*
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.action === "scrape") {
-        console.log('Action  : scrape');
-
-        var courseName = "abc";
-        var courseElement = document.getElementsByClassName('meeting-info-description');
-        if (courseElement) {
-            courseName = courseElement.item(0).textContent;
-        }
-        sendResponse({ data: courseName });
-    }
-});
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.action === "courseName") {
-        var courseName = "";
-        var courseElement = document.getElementsByClassName('meeting-info-description');
-        if (courseElement) {
-
-            var text = courseElement.item(0).textContent;
-            courseName = text.trim();
-        }
-        var raceElement = document.getElementsByClassName('race-number');
-        if (raceElement) {
-
-            var text = raceElement.item(0).textContent;
-            var raceNo = text.trim();
-            if (raceNo.startsWith("R")) {
-                raceNo = raceNo.replace("R", "");
-                raceNo = raceNo.trim();
-                courseName += " Race " + raceNo;
-            }
-        }
-        sendResponse({ data: courseName });
-    }
-});
-*/
-
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.action === "status") {
-        var status = "Not found";
+    if (request.action === 'status') {
+        var status = 'Not found';
         var raceElement = document.getElementsByClassName('race-metadata-list');
         if ((raceElement) && (raceElement.length == 1)) {
             var statusElement = raceElement[0].getElementsByClassName('status-text');
@@ -128,54 +105,24 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                 status = statusElement[0].textContent;
             }
             else
-                status = "status-text not found"
+                status = 'status-text not found';
         }
         else
-            status = "race-metadata-list not found";
+            status = 'race-metadata-list not found';
         sendResponse({ data: status });
     }
 });
 
-
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.action === "race") {
+    if (request.action === 'race') {
+
 
         // Course Name
-        var courseName = "not found";
-        var courseElement = document.getElementsByClassName('meeting-info-description');
-        if (courseElement) {
-
-            var text = courseElement.item(0).textContent;
-            courseName = text.trim();
-        }
-
+        var courseName = GetCourseName();
         // Race Number
-        var raceNo = 0;
-        var raceElement = document.getElementsByClassName('race-number');
-        if (raceElement) {
-
-            var text = raceElement.item(0).textContent;
-            var raceNoStr = text.trim();
-            if (raceNoStr.startsWith("R")) {
-                raceNoStr = raceNoStr.replace("R", "");
-                raceNoStr = raceNoStr.trim();
-            }
-            raceNo = Number(raceNoStr);
-        }
-
+        var raceNo = GetRaceNo();
         // Race Status
-        var raceStatus = "Not found";
-        var raceElement = document.getElementsByClassName('race-metadata-list');
-        if ((raceElement) && (raceElement.length == 1)) {
-            var statusElement = raceElement[0].getElementsByClassName('status-text');
-            if ((statusElement) && (statusElement.length == 1)) {
-                raceStatus = statusElement[0].textContent;
-            }
-            else
-                raceStatus = "status-text not found"
-        }
-        else
-            raceStatus = "race-metadata-list not found";
+        var raceStatus = GetRaceStatus();
 
         // New Race
         var race = new Race(courseName, raceNo);
@@ -186,14 +133,28 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         race.RaceDate = raceDate;
 
 
+        // Pools
+        var pools = GetPools();
+
+        race.WinPool = pools.winPool;
+        race.PlacePool = pools.placePool;
+        race.QuinellaPool = pools.quinellaPool;
+        race.TrifectaPool = pools.trifectaPool;
+        race.ExactaPool = pools.exactaPool;
+        race.DuetPool = pools.duetPool;
+        race.DoublePool = pools.doublePool;
+        race.DDoublePool = pools.dDoublePool;
+        race.FirstFourPool = pools.firstFourPool;
+        race.QuaddiePool = pools.quaddiePool;
+        race.EarlyQuaddiePool = pools.earlyQuaddiePool;
+        race.Big6Pool = pools.big6Pool;
+        race.Debug = pools.debug;
+
 
         // Race Horses
         var pseudoBody = document.getElementsByClassName('pseudo-body');
         if ((pseudoBody) && (pseudoBody.length > 0)) {
 
-            race.Debug = "pseudoBody found"
-            var horseNo = 0;
-            var horseName = "";
 
             var pseudoRowCollection = pseudoBody[0].getElementsByClassName('row');
 
@@ -201,79 +162,43 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                 // Horse Number - Scratched
                 for (var index = 0; index < pseudoRowCollection.length; index++) {
 
-                    var numberCollection = pseudoRowCollection[index].getElementsByClassName('number-cell');
-                    if ((numberCollection) && (numberCollection.length == 1)) {
-                        if (numberCollection[0].className.includes('unselectable'))
-                            race.Scratched.push(true);
-                        else
-                            race.Scratched.push(false);
-                        var horseNoStr = numberCollection[0].textContent;
-                        horseNo = Number(horseNoStr);
-                        race.HorseNo.push(horseNo);
-                    }
+                    // Horse No
+                    var horseNoResult = GetHorseNo(pseudoRowCollection[index]);
+                    race.HorseNo.push(horseNoResult.horseNo);
+                    race.Scratched.push(horseNoResult.scratched);
 
                     // Horse Name
-                    var nameCollection = pseudoRowCollection[index].getElementsByClassName('runner-name');
-                    if ((nameCollection) && (nameCollection.length == 1)) {
-                        var horseName = nameCollection[0].textContent;
-                        race.HorseName.push(horseName);
-                    }
+                    var horseName = GetHorseName(pseudoRowCollection[index]);
+                    race.HorseName.push(horseName);
 
                     // Trainer - Jockey
-                    var runnerMetadataCollection = pseudoRowCollection[index].getElementsByClassName('runner-metadata-list');
-                    if ((runnerMetadataCollection) && (runnerMetadataCollection.length > 0)) {
-                        var fullNameCollection = runnerMetadataCollection[0].getElementsByClassName('full-name');
-                        if ((fullNameCollection) && (fullNameCollection.length == 2)) {
-                            var jockeyName = fullNameCollection[0].textContent;
-                            race.JockeyName.push(jockeyName);
-                            var trainerName = fullNameCollection[1].textContent;
-                            race.TrainerName.push(trainerName);
-                        }
-
-                    }
+                    var trainerJockeyResult = GetTrainerJockey(pseudoRowCollection[index]);
+                    race.TrainerName.push(trainerJockeyResult.trainer);
+                    race.JockeyName.push(trainerJockeyResult.jockey);
 
                     // Weight
-                    var weightCollection = pseudoRowCollection[index].getElementsByClassName('runner-weight-cell');
-                    if ((weightCollection) && (weightCollection.length == 1)) {
-                        var weightStr = weightCollection[0].textContent;
-
-                        var weight = Number(weightStr);
-                        race.Weight.push(weight);
-                    }
+                    var weight = GetWeight(pseudoRowCollection[index]);
+                    race.Weight.push(weight);
 
                     // AAP-Rating
-                    var ratingCollection = pseudoRowCollection[index].getElementsByClassName('runner-rating-cell');
-                    if ((ratingCollection) && (ratingCollection.length == 1)) {
-                        var ratingStr = ratingCollection[0].textContent;
-                        var rating = 0;
-                        if (ratingStr != '–')
-                            rating = Number(ratingStr);
-                        race.Rating.push(rating);
-                    }
+                    var rating = GetRating(pseudoRowCollection[index]);
+                    race.Rating.push(rating);
 
                     // Win - Place
-
                     var priceCollection = pseudoRowCollection[index].getElementsByClassName('price-cell');
                     if ((priceCollection) && (priceCollection.length > 0)) {
-
-
                         for (var priceIndex = 0; priceIndex < priceCollection.length; priceIndex++) {
-
                             var win = 0;
                             var place = 0;
                             var fixedWin = 0;
                             var fixedPlace = 0;
-
                             var dataId = priceCollection[priceIndex].getAttribute('ng-if');
-
                             var priceStr = priceCollection[priceIndex].textContent;
                             if (priceStr.includes('N/A'))
                                 priceStr = '0';
                             if (priceStr.includes('SCR'))
                                 priceStr = '0';
-
                             if (dataId) {
-
                                 if (dataId.includes('showFixedOddsWin')) {
                                     fixedWin = Number(priceStr);
                                     race.FixedWin.push(fixedWin);
@@ -292,32 +217,68 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                                 }
                             }
                         }
-
-
                     }
                 }
-
-
             }
         }
-
-
-
-
-        //sendResponse({ data: courseName + " race " + raceNo + " Status " + raceStatus });
-
-        sendResponse({ data: JSON.stringify(race) });
+        sendResponse({ data: race });
     }
+});
+
+
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.action === 'exacta') {
+
+        var courseName = GetCourseName();
+        var raceNo = GetRaceNo();
+        var status = GetRaceStatus();
+
+        var raceInfo = new RaceInfo(courseName, raceNo, status);
+
+
+        var exactas = [];
+
+        var pseudoRowCombination = document.getElementsByClassName('approximate-combinations');
+        var pseudoRowDividend = document.getElementsByClassName('approximate-dividend');
+        if ((pseudoRowDividend) && (pseudoRowDividend.length > 0)) {
+            debug = '1';
+            if (pseudoRowCombination.length == pseudoRowDividend.length) {
+                for (var index = 0; index < pseudoRowCombination.length; index++) {
+                    if ((pseudoRowCombination) && (pseudoRowCombination.length > 0)) {
+                        var horseNo1 = 0;
+                        var horseNo2 = 0;
+                        var pay = 0;
+                        var innerText1 = pseudoRowCombination[index].textContent;
+                        var innerText2 = pseudoRowDividend[index].textContent;
+                        var split = innerText1.split('-');
+                        if (split.length == 2) {
+                            horseNo1 = Number(split[0]);
+                            horseNo2 = Number(split[1]);
+                        }
+                        if (innerText2.startsWith('$')) {
+                            innerText2 = innerText2.replace('$', '');
+                            innerText2 = innerText2.trim();
+                            pay = Number(innerText2)
+                        }
+
+                        exactas.push({ horseNo1, horseNo2, pay })
+                    }
+                }
+            }
+        }
+    }
+
+    sendResponse({ data: exactas, raceInfo: raceInfo });
 
 });
 
 
 function CheckForRaceDate(url) {
-    var courseName = "";
-    var raceNo = ""
+    var courseName = '';
+    var raceNo = '';
     var raceDate;
 
-    if (url.includes("meetings")) {
+    if (url.includes('meetings')) {
     }
     else {
         var split = url.split('/');
@@ -327,10 +288,10 @@ function CheckForRaceDate(url) {
         }
         split.forEach((item) => {
 
-            if (item == "today") {
+            if (item == 'today') {
                 raceDate = new Date();
             }
-            else if (item == "yesterday") {
+            else if (item == 'yesterday') {
                 var todayDate = new Date(); // today
                 raceDate = todayDate.setDate(todayDate.getDate() - 1) // yesterday
             }
@@ -354,10 +315,207 @@ function CheckForRaceDate(url) {
     return raceDate;
 }
 
+function GetHorseNo(pseudoRow) {
+    var horseNo = 0;
+    var scratched = false;
+    var numberCollection = pseudoRow.getElementsByClassName('number-cell');
+    if ((numberCollection) && (numberCollection.length == 1)) {
+        if (numberCollection[0].className.includes('unselectable'))
+            scratched = true;
+        else
+            scratched = false;
+        var horseNoStr = numberCollection[0].textContent;
+        horseNo = Number(horseNoStr);
+
+    }
+
+    return { horseNo: horseNo, scratched: scratched };
+}
+
+function GetTrainerJockey(pseudoRow) {
+    var trainerName = '';
+    var jockeyName = '';
+    var runnerMetadataCollection = pseudoRow.getElementsByClassName('runner-metadata-list');
+    if ((runnerMetadataCollection) && (runnerMetadataCollection.length > 0)) {
+        var fullNameCollection = runnerMetadataCollection[0].getElementsByClassName('full-name');
+        if ((fullNameCollection) && (fullNameCollection.length == 2)) {
+            jockeyName = fullNameCollection[0].textContent;
+            trainerName = fullNameCollection[1].textContent;
+        }
+    }
+    return { trainer: trainerName, jockey: jockeyName };
+}
+
+function GetWeight(pseudoRow) {
+    var weight = 0;
+    var weightCollection = pseudoRow.getElementsByClassName('runner-weight-cell');
+    if ((weightCollection) && (weightCollection.length == 1)) {
+        var weightStr = weightCollection[0].textContent;
+        weight = Number(weightStr);
+    }
+    return weight;
+}
+
+function GetRating(pseudoRow) {
+    var rating = 0;
+    var ratingCollection = pseudoRow.getElementsByClassName('runner-rating-cell');
+    if ((ratingCollection) && (ratingCollection.length == 1)) {
+        var ratingStr = ratingCollection[0].textContent;
+        if (ratingStr != '–')
+            rating = Number(ratingStr);
+    }
+    return rating;
+}
+
+function GetHorseName(pseudoRow) {
+
+    var horseName = '';
+    var nameCollection = pseudoRow.getElementsByClassName('runner-name');
+    if ((nameCollection) && (nameCollection.length == 1)) {
+        horseName = nameCollection[0].textContent;
+
+    }
+    return horseName
+}
+
+function GetPools() {
+    winPool = 0;
+    placePool = 0;
+    quinellaPool = 0;
+    trifectaPool = 0;
+    exactaPool = 0;
+    duetPool = 0;
+    doublePool = 0;
+    dDoublePool = 0;
+    firstFourPool = 0;
+    quaddiePool = 0;
+    earlyQuaddiePool = 0;
+    big6Pool = 0;
+    debug = '';
+
+    var poolElements = document.getElementsByClassName('pools-list');
+    if ((poolElements) && (poolElements.length == 1)) {
+
+
+        var poolListElements = poolElements[0].getElementsByTagName('li');
+        if ((poolListElements) && (poolListElements.length > 0)) {
+
+            for (var index = 0; index < poolListElements.length; index++) {
+
+
+                var poolName = '';
+                var poolValueStr = '';
+                var poolValue = '';
+                var poolSpanElements = poolListElements[index].getElementsByTagName('span');
+                if ((poolSpanElements) && (poolSpanElements.length > 0)) {
+
+                    for (var spanIndex = 0; spanIndex < poolSpanElements.length; spanIndex++) {
+
+
+
+                        //var dataTestElement = poolSpanElements[spanIndex].getAttribute('data-test-pool-name'); // does not work
+                        //if (dataTestElement) {
+                        if (poolSpanElements[spanIndex].dataset.testPoolName !== undefined) {
+                            debug = ' dataTestElement found';
+
+                            poolName = poolSpanElements[spanIndex].textContent;
+                            poolName = poolName.trim();
+                            if (poolName != '')
+                                debug = poolName;
+                        }
+                        var className = poolSpanElements[spanIndex].className;
+
+                        if ((className) && (className.includes('amount-span'))) {
+
+                            poolValueStr = poolSpanElements[spanIndex].textContent
+                            poolValueStr = poolValueStr.trim();
+
+                            if (poolValueStr.startsWith('$')) {
+                                poolValueStr = poolValueStr.replace('$', '');
+                                poolValueStr = poolValueStr.trim();
+                            }
+                            poolValue = Number(poolValueStr);
+                        }
+
+
+                    }
+
+                    if ((poolValue != 0) && (poolName != '')) {
+                        if (poolName.startsWith('Trifecta'))
+                            poolName = 'Trifecta';
+                        if (poolName.startsWith('Running Double'))
+                            poolName = 'Running Double';
+                        if (poolName.startsWith('Daily Double'))
+                            poolName = 'Daily Double';
+                        if (poolName.includes('Quinella'))
+                            poolName = 'Quinella';
+                        switch (poolName) {
+                            case 'Win':
+                                winPool = poolValue;
+                                break;
+                            case 'Place':
+                                placePool = poolValue;
+                                break;
+                            case 'Trifecta':
+                                trifectaPool = poolValue;
+                                break;
+                            case 'Quinella':
+                                quinellaPool = poolValue;
+                                break;
+                            case 'Exacta':
+                                exactaPool = poolValue;
+                                break;
+                            case 'Duet':
+                                duetPool = poolValue;
+                                break;
+                            case 'First Four':
+                                firstFourPool = poolValue;
+                                break;
+                            case 'Running Double':
+                                doublePool = poolValue;
+                                break;
+                            case 'Daily Double':
+                                dDoublePool = poolValue;
+                                break;
+                            case 'Quaddie':
+                                quaddiePool = poolValue;
+                                break;
+                            case 'Early Quaddie':
+                                earlyQuaddiePool = poolValue;
+                                break;
+                            case 'BIG6':
+                                if (big6Pool != 0)  // Second Apperance is for first five races
+                                    big6Pool = poolValue;
+                                break;
+                        }
+                        poolName = '';
+                    }
+
+                }
+            }
+        }
+    }
+    return {
+        winPool: winPool,
+        placePool: placePool,
+        quinellaPool: quinellaPool,
+        trifectaPool: trifectaPool,
+        exactaPool: exactaPool,
+        duetPool: duetPool,
+        doublePool: doublePool,
+        dDoublePool: dDoublePool,
+        firstFourPool: firstFourPool,
+        quaddiePool: quaddiePool,
+        earlyQuaddiePool: earlyQuaddiePool,
+        big6Pool: big6Pool,
+        debug: debug
+    };
+
+}
 
 
 function GetCourseName() {
-    var courseName = "";
+    var courseName = '';
     var courseElement = document.getElementsByClassName('meeting-info-description');
     if (courseElement) {
         var text = courseElement.item(0).textContent;
@@ -373,8 +531,8 @@ function GetRaceNo() {
 
         var text = raceElement.item(0).textContent;
         var raceNoStr = text.trim();
-        if (raceNoStr.startsWith("R")) {
-            raceNoStr = raceNoStr.replace("R", "");
+        if (raceNoStr.startsWith('R')) {
+            raceNoStr = raceNoStr.replace('R', '');
             raceNo = Number(raceNoStr.trim());
         }
     }
@@ -382,7 +540,7 @@ function GetRaceNo() {
 }
 
 function GetRaceStatus() {
-    var status = "Not found";
+    var status = 'Not found';
     var raceElement = document.getElementsByClassName('race-metadata-list');
     if ((raceElement) && (raceElement.length == 1)) {
         var statusElement = raceElement[0].getElementsByClassName('status-text');
@@ -390,9 +548,9 @@ function GetRaceStatus() {
             status = statusElement[0].textContent;
         }
         else
-            status = "status-text not found"
+            status = 'status-text not found';
     }
     else
-        status = "race-metadata-list not found";
+        status = 'race-metadata-list not found';
     return status;
 }

@@ -1,9 +1,22 @@
+import ActiveTab from './activetab.js';
+import RaceUpdate from './raceupdate.js';
+
 const TAB_RACING = 'https://www.tab.com.au';
-const TEN_SECONDS_MS = 10 * 1000;
+const ONE_SECONDS_MS = 1 * 1000;
 let webSocket = null;
 
 var activeWindowId = 0;
-var activeTabIds = [];
+var pingTimer = 0;
+var activeTabs = [];
+
+const Idle = 0;
+const GetRaceInfo = 1;
+const GetRace = 2;
+const ClickExacta = 3;
+const ClickApproximates = 4;
+const GetExacta = 5;
+const ClickWinPlace = 6;
+
 
 
 //chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
@@ -15,11 +28,10 @@ chrome.tabs.onCreated.addListener(function (tab) {
   }
 });
 
-
 chrome.tabs.onAttached.addListener(async function (tabId, attachInfo) {
   console.log('Tab Attached : ' + tabId + " Window Id : " + attachInfo.newWindowId);
 
-  if (tab.windowId == activeWindowId) {
+  if (attachInfo.windowId == activeWindowId) {
     AddActiveTab(tab.id);
   }
 });
@@ -47,11 +59,12 @@ chrome.tabs.onRemoved.addListener(async function (tabId, removeInfo) {
 
 self.addEventListener('install', (event) => {
   console.log('Service Worker: Install');
+  pingTimer = 10;
 });
 
 self.addEventListener('activate', (event) => {
   console.log('Service Worker: Activate');
-
+  pingTimer = 10;
 });
 
 /*
@@ -75,21 +88,22 @@ async function getTabFromId(tabId) {
   */
 
 function AddActiveTab(tabId) {
-  activeTabIds.push(tabId);
+  var activeTab = new ActiveTab(tabId);
+  activeTabs.push(activeTab);
 
-  console.log(activeTabIds.length + ' Activate Tabs');
+  console.log(activeTabs.length + ' Activate Tabs');
 }
 
 function TabIdExists(tabId) {
   //console.log('TabIdExists searching for ' + tabId);
-  //console.log('TabIdExists checking ' + activeTabIds.length);
-  //console.log('TabIdExists checking actual ' + activeTabIds[0]);
+  //console.log('TabIdExists checking ' + activeTabs.length);
+  //console.log('TabIdExists checking actual ' + activeTabs[0]);
 
   var found = false;
-  if (activeTabIds) {
-    activeTabIds.forEach((activeTab) => {
+  if (activeTabs) {
+    activeTabs.forEach((activeTab) => {
       //console.log('TabIdExists checking ' + activeTab);
-      if (activeTab === tabId) {
+      if (activeTab.TabId === tabId) {
         found = true;
       }
     });
@@ -98,23 +112,15 @@ function TabIdExists(tabId) {
   return found;
 }
 
-/*
-TabIdExists checking 1
-service-worker.js:86 TabIdExists checking actual 1304153139
-service-worker.js:89 TabIdExists checking 1304153139
-service-worker.js:95 1304152839 does not exist
-service-worker.js:84
-*/
-
 function RemoveActiveTab(tabId) {
   console.log('RemoveActiveTab Tabs');
-  if (activeTabIds) {
+  if (activeTabs) {
 
     var index = 0;
     var tabIndex = 0;
     var found = false;
-    activeTabIds.forEach((activeTab) => {
-      if (activeTab == tabId) {
+    activeTabs.forEach((activeTab) => {
+      if (activeTab.TabId == tabId) {
         console.log('RemoveActiveTab Tabs Id = ' + activeTab);
         found = true;
         tabIndex = index;
@@ -124,8 +130,8 @@ function RemoveActiveTab(tabId) {
     });
     if (found) {
       console.log('RemoveActiveTab Found ');
-      activeTabIds.splice(tabIndex, 1);  // remove from array
-      console.log(activeTabIds.length + ' Activate Tabs');
+      activeTabs.splice(tabIndex, 1);  // remove from array
+      console.log(activeTabs.length + ' Activate Tabs');
     }
   }
 }
@@ -190,14 +196,16 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
       console.log('Current Window is : ' + window.id);
       activeWindowId = window.id; // store the window where service is activated
 
-      activeTabIds = [];
+      activeTabs = [];
       const allTabs = await chrome.tabs.query({});
       allTabs.forEach((tab) => {
 
-        if (tab.windowId == activeWindowId)
-          activeTabIds.push(tab.id);
+        if (tab.windowId == activeWindowId) {
+          var activeTab = new ActiveTab(tab.id);
+          activeTabs.push(activeTab);
+        }
       });
-      console.log(activeTabIds.length + ' Activate Tabs');
+      console.log(activeTabs.length + ' Activate Tabs');
 
     });
 
@@ -248,17 +256,23 @@ function connect() {
     webSocket = null;
 
   };
+  pingTimer = 10;
 }
 
 function disconnect() {
   if (webSocket) {
     webSocket.close();
+    pingTimer = 0;
   }
 }
 
+
 function keepAlive() {
+  /*
   const keepAliveIntervalId = setInterval(
     () => {
+
+      OneSecondPoll();
       if (webSocket) {
         console.log('ping');
         webSocket.send('ping');
@@ -269,123 +283,328 @@ function keepAlive() {
     },
     // It's important to pick an interval that's shorter than 30s, to
     // avoid that the service worker becomes inactive.
-    TEN_SECONDS_MS
+    ONE_SECONDS_MS
   );
+  */
 }
 
-function PollTabOldest() {
+const intervalID = setInterval(OneSecondPoll, 1000);
 
-  (async () => {
-    const response = await chrome.runtime.sendMessage({ action: "poll" });
-    // do something with response here, not outside the function
-    console.log("service-worker response : " + response.data);
+function OneSecondPoll() {
 
-    webSocket.send(response.data);
-  })();
+  if (webSocket) {
+    if (pingTimer != 0) {
+      pingTimer--;
+      if (pingTimer == 0) {
+        pingTimer = 10;
+        webSocket.send('ping');
+      }
+    }
+    PollTabs();
+  }
 }
 
-function PollTabOld() {
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    chrome.tabs.sendMessage(tabs[0].id, { action: "race" }, function (response) {
-      console.log("service-worker response : " + response.data);
+async function PollTabs() {
 
-      webSocket.send(response.data);
-
+  if (activeTabs) {
+    activeTabs.forEach(async (activeTab) => {
+      if (activeTab.Timer != 0)
+        activeTab.Timer--;
+      if (activeTab.Timer == 0) {
+        activeTab.Timer = 5;
+        var tab = await GetTab(activeTab.TabId);
+        if (tab)
+          PollTab(activeTab, tab)
+      }
     });
-  });
+  }
 }
 
-async function PollTab() {
-
+async function GetTab(tabId) {
   const allTabs = await chrome.tabs.query({});
+  var tabFound = null;
+  allTabs.forEach((tab) => {
+    if (tab.id === tabId)
+      tabFound = tab;
+  });
+  return tabFound;
+}
 
+function CompareOdds(newRace, race) {
+
+  var scratched = true;
+  var toteOdds = true;
+  var fixedOdds = true;
+  if (newRace.Scratched.length == race.Scratched.length) {
+    for (var index = 0; index < newRace.Scratched.length; index++) {
+      if (newRace.Scratched[index] !== race.Scratched[index]) {
+        scratched = false;
+        console.log("CompareOdds : New Scrathing");
+      }
+    }
+  } else {
+    scratched = false;
+    console.log("CompareOdds : Scrathing - Missmatch");
+  }
+
+  if (newRace.Win.length == race.Win.length) {
+    for (var index = 0; index < newRace.Win.length; index++) {
+      if (newRace.Win[index] !== race.Win[index]) {
+        toteOdds = false;
+        console.log("CompareOdds : Tote Odds Updated");
+      }
+    }
+  } else {
+    toteOdds = false;
+    console.log("CompareOdds : ToteOdds - Missmatch");
+  }
+  if (newRace.FixedWin.length == race.FixedWin.length) {
+    for (var index = 0; index < newRace.FixedWin.length; index++) {
+      if (newRace.FixedWin[index] !== race.FixedWin[index]) {
+        fixedOdds = false;
+        console.log("CompareOdds : Fixed Odds Updated");
+      }
+    }
+  }
+  else {
+    fixedOdds = false;
+    console.log("CompareOdds : FixedOdds - Missmatch");
+  }
+
+  if (scratched && toteOdds && fixedOdds)
+    return true;
+  else
+    return false;
+}
+
+function CompareExactas(newExactas, exactas) {
+
+  var matched = true;
+  if (newExactas.length == exactas.length) {
+    for (var index = 0; index < newExactas.length; index++) {
+      if (newExactas[index].Pay !== exactas[index].Pay)
+        matched = false;
+    }
+  }
+  else
+    matched = false;
+
+  return matched;
+}
+
+
+
+async function PollTab(activeTab, tab) {
   const zeroPad = (num, places) => String(num).padStart(places, '0')
 
-  allTabs.forEach((tab) => {
+  var courseName = ''
+  var raceNo = 0;
+  var raceStatus = '';
 
-    if (TabIdExists(tab.id)) {
+  var date = new Date();
+  var year = date.getFullYear();
+  var month = date.getMonth();
+  month++;
+  var day = date.getDate();
+  const today = year + '-' + zeroPad(month, 2) + '-' + zeroPad(day, 2);
+  if (tab.url.includes('https://www.tab.com.au/racing/' + today)) {
 
-      var date = new Date();
-      var year = date.getFullYear();
-      var month = date.getMonth();
-      month++;
-      var day = date.getDate();
-      const today = year + '-' + zeroPad(month, 2) + '-' + zeroPad(day, 2);
-      if (tab.url.includes('https://www.tab.com.au/racing/' + today)) {
+    switch (activeTab.TabState) {
+      case Idle:
+        break;
+      case GetRaceInfo:
+        // Get CourseName, RaceNo, RaceStatus
+
+        activeTab.TabState = GetRace;  // Next Task
+
+        console.log("State : Race Info");
 
         chrome.tabs.sendMessage(tab.id, { action: "raceInfo" }, function (response) {
           console.log("service-worker response : " + response.data);
 
-          var courseName = response.data.CourseName;
-          var raceNo = response.data.RaceNo;
-          var raceStatus = response.data.RaceStatus;
+          courseName = response.data.CourseName;
+          raceNo = response.data.RaceNo;
+          raceStatus = response.data.RaceStatus;
 
-          var title = 'Race ' + raceNo + ' ' + courseName.toUpperCase() + ' (' + raceStatus + ')';
+          sendMessage = false;
 
-          chrome.tabs.sendMessage(tab.id, { action: "title", data: title }, {
-          });
+          console.log("Race Status : " + raceStatus);
 
+          if ((activeTab.CourseName == '') || (activeTab.CourseName !== courseName) || (activeTab.RaceNo !== raceNo)) {
 
+            console.log("Update Tab Race Status : " + raceStatus);
+            sendMessage = true;
+            activeTab.CourseName = courseName;
+            activeTab.RaceNo = raceNo;
+            activeTab.RaceStatus = raceStatus;
+            activeTab.Race = undefined;
+            activeTab.Exactas = undefined;
+          } else if (activeTab.RaceStatus !== raceStatus) {
+            console.log("New Tab Race Status : " + raceStatus);
+            sendMessage = true;
+            activeTab.RaceStatus = raceStatus;
+          }
+
+          if (sendMessage) {
+            console.log("Race Status (Send) : " + raceStatus);
+            //var title = 'Race ' + raceNo + ' ' + courseName.toUpperCase() + ' (' + raceStatus + ')';
+            //chrome.tabs.sendMessage(tab.id, { action: "title", data: title }, {
+            //});
+            var raceUpdate = new RaceUpdate(courseName, raceNo);
+            raceUpdate.RaceStatus = raceStatus;
+            webSocket.send(JSON.stringify(raceUpdate));
+          }
+
+          // NextRace
+          if (raceStatus === 'All Paying') {
+            //console.log("Next Race : " + raceNo + 1);
+            chrome.tabs.sendMessage(tab.id, { action: "clickRaceNo", data: raceNo + 1 }, {
+            });
+          }
         });
+        break;
+
+      case GetRace:
+        // Get Race
+        console.log("State : GetRace");
+
+        activeTab.TabState = ClickExacta;  // Next Task
 
 
+        var sendMessage = false;
         chrome.tabs.sendMessage(tab.id, { action: "race" }, function (response) {
           console.log("service-worker response : " + response.data);
 
-          webSocket.send(response.data);
+          var race = response.data;
+
+          sendMessage = false;
+          if ((activeTab.CourseName === race.CourseName) && (activeTab.RaceNo == race.RaceNo)) {
+            if (activeTab.Race == undefined) {
+              activeTab.Race = response.data;
+            } else {
+              var equal = CompareOdds(response.data, activeTab.Race);
+              if (!equal) {
+                sendMessage = true;
+                activeTab.Race = race;
+              }
+            }
+          } else {
+            console.log('CouseName or RaceNo Missmatch');
+            console.log('CouseName Active : ' + activeTab.CourseName)
+            console.log('CouseName Race : ' + race.CourseName)
+
+            console.log('RaceNo Active : ' + activeTab.RaceNo)
+            console.log('RaceNo Race : ' + race.RaceNo)
+          }
+
+
+
+          if (sendMessage) {
+            var race = response.data;
+            var courseName = response.race;
+            var raceNo = response.race;
+            var raceUpdate = new RaceUpdate(courseName, raceNo);
+            raceUpdate.Race = race;
+            webSocket.send(JSON.stringify(raceUpdate));
+          }
 
         });
-      }
+        break;
+
+      case ClickExacta:
+
+        console.log("State : ClickExacta");
+
+
+        chrome.tabs.sendMessage(tab.id, { action: "clickExacta" }, function (response) {
+          console.log("service-worker response : " + response.data);
+
+        });
+
+        activeTab.TabState = ClickApproximates;  // Next Task
+        activeTab.Timer = 1;
+
+        break;
+
+      case ClickApproximates:
+
+        console.log("State : ClickApproximates");
+
+        // Get Exacta
+        chrome.tabs.sendMessage(tab.id, { action: "clickApprox" }, function (response) {
+          console.log("service-worker response : " + response.data);
+
+        });
+
+        activeTab.TabState = GetExacta;  // Next Task
+        activeTab.Timer = 1;
+
+        break;
+
+      case GetExacta:
+
+        console.log("State : GetExacta");
+
+        // Get Exacta
+        chrome.tabs.sendMessage(tab.id, { action: "exacta" }, function (response) {
+          //console.log("service-worker response : " + response.data);
+
+          var sendMessage = false;
+          var raceInfo = response.raceInfo;
+          if ((activeTab.CouseName === raceInfo.CourseName) && (activeTab.RaceNo == raceInfo.RaceNo)) {
+
+            if (activeTab.Exactas == undefined) {
+              sendMessage = true;
+              activeTab.Exactas = response.data;
+            } else {
+
+              var equal = CompareExactas(response.data, activeTab.Exactas)
+              if (!equal) {
+                sendMessage = true;
+                activeTab.Exactas = response.data;
+              }
+            }
+          } else {
+            console.log('Exacta CouseName or RaceNo Missmatch');
+            console.log('Exacta CouseName Active : ' + activeTab.CourseName)
+            console.log('Exacta CouseName Race : ' + raceInfo.CourseName)
+
+            console.log('Exacta RaceNo Active : ' + activeTab.RaceNo)
+            console.log('Exacta RaceNo Race : ' + raceInfo.RaceNo)
+
+          }
+
+          if (sendMessage) {
+
+            var raceUpdate = new RaceUpdate(activeTab.CourseName, activeTab.RaceNo);
+            raceUpdate.Exactas = response.data;
+
+
+            webSocket.send(JSON.stringify(raceUpdate));
+          }
+
+          activeTab.TabState = ClickWinPlace;  // Next Task
+          activeTab.Timer = 1;
+
+        });
+        break;
+
+      case ClickWinPlace:
+
+        activeTab.TabState = GetRaceInfo;  // Next Task
+
+        chrome.tabs.sendMessage(tab.id, { action: "clickWinPlace" }, function (response) {
+          console.log("service-worker response : " + response.data);
+
+        });
+        break;
+
+
     }
-  });
+
+
+  }
 }
 
-/*
-
-const allTabs = await chrome.tabs.query({});
-allTabs.forEach((tab) => {
-  if (tab.windowId != current.id) {
-    chrome.tabs.move(tab.id, {
-      windowId: current.id,
-      index: tab.index
-    });
-  }
-});
-*/
-
-//  (() => {
-//    const response = chrome.runtime.sendMessage({ action: "poll" });
-//    // do something with response here, not outside the function
-//    console.log("service-worker response : " + response.data);
-//    webSocket.send(response.data);
-//  })();
-
-//}
 
 
-//chrome.webNavigation.onCompleted.addListener((details) => {
-//
-//  webSocket.send('Completed loading: ' + details.url);
-//
-//});
-
-/*
-chrome.webNavigation.onCompleted.addListener((details) => {
-
-  if (webSocket) {
-    webSocket.send('Completed loading: ' + details.url);
-  }
-  //
-  //chrome.notifications.create({
-  //  type: 'basic',
-  //  iconUrl: 'icon.png',
-  //  title: 'page loaded',
-  //  message:
-  //    'Completed loading: ' +
-  //    details.url +
-  //    ' at ' +
-  //    details.timeStamp +
-  //    ' milliseconds since the epoch.'
-  //});
-});
-*/
