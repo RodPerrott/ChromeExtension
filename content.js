@@ -148,7 +148,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         race.QuaddiePool = pools.quaddiePool;
         race.EarlyQuaddiePool = pools.earlyQuaddiePool;
         race.Big6Pool = pools.big6Pool;
-        race.Debug = pools.debug;
+
 
 
         // Race Horses
@@ -169,6 +169,17 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
                     // Horse Name
                     var horseName = GetHorseName(pseudoRowCollection[index]);
+                    const pos1 = horseName.indexOf('(');
+                    const pos2 = horseName.indexOf(')');
+
+                    if ((pos1 > 0) && (pos2 > 0)) {
+                        var barrierStr = horseName.substring(pos1 + 1, pos2);
+                        const barrier = Number(barrierStr);
+                        race.Barrier.push(barrier);
+                        horseName = horseName.substring(0, (pos1 - 1));
+                        horseName = horseName.trim();
+                    }
+
                     race.HorseName.push(horseName);
 
                     // Trainer - Jockey
@@ -185,39 +196,83 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     race.Rating.push(rating);
 
                     // Win - Place
+
                     var priceCollection = pseudoRowCollection[index].getElementsByClassName('price-cell');
                     if ((priceCollection) && (priceCollection.length > 0)) {
+
                         for (var priceIndex = 0; priceIndex < priceCollection.length; priceIndex++) {
-                            var win = 0;
-                            var place = 0;
-                            var fixedWin = 0;
-                            var fixedPlace = 0;
-                            var dataId = priceCollection[priceIndex].getAttribute('ng-if');
-                            var priceStr = priceCollection[priceIndex].textContent;
-                            if (priceStr.includes('N/A'))
-                                priceStr = '0';
-                            if (priceStr.includes('SCR'))
-                                priceStr = '0';
-                            if (dataId) {
-                                if (dataId.includes('showFixedOddsWin')) {
-                                    fixedWin = Number(priceStr);
-                                    race.FixedWin.push(fixedWin);
+
+
+                            var ngIfAttribute = priceCollection[priceIndex].getAttribute('ng-if');
+
+                            var animateOddsElements = priceCollection[priceIndex].getElementsByTagName('animate-odds-change');
+                            if ((animateOddsElements) && (animateOddsElements.length == 1)) {
+
+                                race.Debug = "Got Div Here";
+
+
+                                var div1Elements = animateOddsElements[0].getElementsByTagName('div');
+                                if ((div1Elements) && (div1Elements.length > 0)) {
+
+                                    race.Debug = "Got Div 1";
+
+                                    var div2Elements = div1Elements[0].getElementsByTagName('div');
+
+                                    if ((div2Elements) && (div2Elements.length == 1)) {
+
+                                        race.Debug = "Got Div 2";
+
+
+                                        var win = 0;
+                                        var place = 0;
+                                        var fixedWin = 0;
+                                        var fixedPlace = 0;
+                                        var priceStr = div2Elements[0].textContent;
+                                        if (priceStr.includes('N/A'))
+                                            priceStr = '0';
+                                        if (priceStr.includes('SCR'))
+                                            priceStr = '0';
+                                        priceStr = priceStr.replace(',', '');
+
+                                        if ((ngIfAttribute) && (ngIfAttribute.includes('raceRunners.showFixedOddsWin'))) {
+                                            fixedWin = Number(priceStr);
+                                            if (fixedWin == null)
+                                                race.Debug = ' Fixed Win Error ********************** ' + priceStr;
+                                            race.FixedWin.push(fixedWin);
+                                        }
+                                        else if ((ngIfAttribute) && (ngIfAttribute.includes('raceRunners.showFixedOddsPlace'))) {
+
+                                            fixedPlace = Number(priceStr);
+                                            if (fixedPlace == null)
+                                                race.Debug = ' Fixed Place Error ********************** ' + priceStr;
+                                            race.FixedPlace.push(fixedPlace);
+                                        }
+                                        else if ((ngIfAttribute) && (ngIfAttribute.includes('raceRunners.showParimutuelWin'))) {
+                                            win = Number(priceStr);
+                                            if (win == null)
+                                                race.Debug = ' Win Error ********************** ' + priceStr;
+                                            race.Win.push(win);
+                                        }
+                                        else if ((ngIfAttribute) && (ngIfAttribute.includes('raceRunners.showParimutuelPlace'))) {
+                                            place = Number(priceStr);
+                                            if (place == null)
+                                                race.Debug = ' Place Error ********************** ' + priceStr;
+                                            race.Place.push(place);
+                                        }
+
+                                    }
+
+
+
                                 }
-                                else if (dataId.includes('showFixedOddsPlace')) {
-                                    fixedPlace = Number(priceStr);
-                                    race.FixedPlace.push(fixedPlace);
-                                }
-                                else if (dataId.includes('showParimutuelWin')) {
-                                    win = Number(priceStr);
-                                    race.Win.push(win);
-                                }
-                                else if (dataId.includes('showParimutuelPlace')) {
-                                    place = Number(priceStr);
-                                    race.Place.push(place);
-                                }
+
                             }
+
+
                         }
                     }
+
+
                 }
             }
         }
@@ -241,7 +296,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         var pseudoRowCombination = document.getElementsByClassName('approximate-combinations');
         var pseudoRowDividend = document.getElementsByClassName('approximate-dividend');
         if ((pseudoRowDividend) && (pseudoRowDividend.length > 0)) {
-            debug = '1';
+
             if (pseudoRowCombination.length == pseudoRowDividend.length) {
                 for (var index = 0; index < pseudoRowCombination.length; index++) {
                     if ((pseudoRowCombination) && (pseudoRowCombination.length > 0)) {
@@ -258,6 +313,8 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                         if (innerText2.startsWith('$')) {
                             innerText2 = innerText2.replace('$', '');
                             innerText2 = innerText2.trim();
+                            innerText2 = innerText2.replace(',', '');
+
                             pay = Number(innerText2)
                         }
 
@@ -416,12 +473,12 @@ function GetPools() {
                         //var dataTestElement = poolSpanElements[spanIndex].getAttribute('data-test-pool-name'); // does not work
                         //if (dataTestElement) {
                         if (poolSpanElements[spanIndex].dataset.testPoolName !== undefined) {
-                            debug = ' dataTestElement found';
+                            //debug = ' dataTestElement found';
 
                             poolName = poolSpanElements[spanIndex].textContent;
                             poolName = poolName.trim();
-                            if (poolName != '')
-                                debug = poolName;
+                            //if (poolName != '')
+                            //debug = poolName;
                         }
                         var className = poolSpanElements[spanIndex].className;
 
@@ -431,6 +488,7 @@ function GetPools() {
                             poolValueStr = poolValueStr.trim();
 
                             if (poolValueStr.startsWith('$')) {
+                                poolValueStr = poolValueStr.replace(',', '');
                                 poolValueStr = poolValueStr.replace('$', '');
                                 poolValueStr = poolValueStr.trim();
                             }
@@ -440,7 +498,7 @@ function GetPools() {
 
                     }
 
-                    if ((poolValue != 0) && (poolName != '')) {
+                    if ((poolValue) && (poolName) && (poolValue != 0) && (poolName != '')) {
                         if (poolName.startsWith('Trifecta'))
                             poolName = 'Trifecta';
                         if (poolName.startsWith('Running Double'))
@@ -489,6 +547,7 @@ function GetPools() {
                                 break;
                         }
                         poolName = '';
+                        poolValue = 0;
                     }
 
                 }

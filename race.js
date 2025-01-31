@@ -10,6 +10,7 @@ class Race {
     Scratched = []
     TrainerName = [];
     JockeyName = [];
+    Barrier = [];
     Weight = [];
     Rating = [];
     Win = [];

@@ -9,6 +9,7 @@ var activeWindowId = 0;
 var pingTimer = 0;
 var activeTabs = [];
 
+// Active Tab States
 const Idle = 0;
 const GetRaceInfo = 1;
 const GetRace = 2;
@@ -16,6 +17,11 @@ const ClickExacta = 3;
 const ClickApproximates = 4;
 const GetExacta = 5;
 const ClickWinPlace = 6;
+
+// Race Updates
+const RaceInfoUpdated = 0;
+const RaceUpdated = 1;
+const ExactaUpdated = 2;
 
 
 
@@ -292,17 +298,27 @@ const intervalID = setInterval(OneSecondPoll, 1000);
 
 function OneSecondPoll() {
 
-  if (webSocket) {
-    if (pingTimer != 0) {
-      pingTimer--;
-      if (pingTimer == 0) {
-        pingTimer = 10;
+  if (pingTimer != 0) {
+    pingTimer--;
+    if (pingTimer == 0) {
+      pingTimer = 10;
+
+      if (webSocket) {
         webSocket.send('ping');
       }
+      else {
+
+        if ((activeTabs) && (activeTabs.length > 0)) {
+          connect();
+        }
+      }
     }
-    PollTabs();
+    if (webSocket)
+      PollTabs();
   }
 }
+
+
 
 async function PollTabs() {
 
@@ -450,7 +466,7 @@ async function PollTab(activeTab, tab) {
             //var title = 'Race ' + raceNo + ' ' + courseName.toUpperCase() + ' (' + raceStatus + ')';
             //chrome.tabs.sendMessage(tab.id, { action: "title", data: title }, {
             //});
-            var raceUpdate = new RaceUpdate(courseName, raceNo);
+            var raceUpdate = new RaceUpdate(RaceInfoUpdated, courseName, raceNo);
             raceUpdate.RaceStatus = raceStatus;
             webSocket.send(JSON.stringify(raceUpdate));
           }
@@ -480,6 +496,7 @@ async function PollTab(activeTab, tab) {
           sendMessage = false;
           if ((activeTab.CourseName === race.CourseName) && (activeTab.RaceNo == race.RaceNo)) {
             if (activeTab.Race == undefined) {
+              sendMessage = true;
               activeTab.Race = response.data;
             } else {
               var equal = CompareOdds(response.data, activeTab.Race);
@@ -490,21 +507,17 @@ async function PollTab(activeTab, tab) {
             }
           } else {
             console.log('CouseName or RaceNo Missmatch');
-            console.log('CouseName Active : ' + activeTab.CourseName)
-            console.log('CouseName Race : ' + race.CourseName)
-
-            console.log('RaceNo Active : ' + activeTab.RaceNo)
-            console.log('RaceNo Race : ' + race.RaceNo)
           }
 
 
 
           if (sendMessage) {
             var race = response.data;
-            var courseName = response.race;
-            var raceNo = response.race;
-            var raceUpdate = new RaceUpdate(courseName, raceNo);
+            var courseName = race.CourseName;
+            var raceNo = race.RaceNo;
+            var raceUpdate = new RaceUpdate(RaceUpdated, courseName, raceNo);
             raceUpdate.Race = race;
+            raceUpdate.RaceStatus = race.RaceStatus;
             webSocket.send(JSON.stringify(raceUpdate));
           }
 
@@ -551,7 +564,7 @@ async function PollTab(activeTab, tab) {
 
           var sendMessage = false;
           var raceInfo = response.raceInfo;
-          if ((activeTab.CouseName === raceInfo.CourseName) && (activeTab.RaceNo == raceInfo.RaceNo)) {
+          if ((activeTab.CourseName === raceInfo.CourseName) && (activeTab.RaceNo === raceInfo.RaceNo)) {
 
             if (activeTab.Exactas == undefined) {
               sendMessage = true;
@@ -566,17 +579,11 @@ async function PollTab(activeTab, tab) {
             }
           } else {
             console.log('Exacta CouseName or RaceNo Missmatch');
-            console.log('Exacta CouseName Active : ' + activeTab.CourseName)
-            console.log('Exacta CouseName Race : ' + raceInfo.CourseName)
-
-            console.log('Exacta RaceNo Active : ' + activeTab.RaceNo)
-            console.log('Exacta RaceNo Race : ' + raceInfo.RaceNo)
-
           }
 
           if (sendMessage) {
 
-            var raceUpdate = new RaceUpdate(activeTab.CourseName, activeTab.RaceNo);
+            var raceUpdate = new RaceUpdate(ExactaUpdated, activeTab.CourseName, activeTab.RaceNo);
             raceUpdate.Exactas = response.data;
 
 

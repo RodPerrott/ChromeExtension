@@ -1,11 +1,13 @@
 class RaceUpdate {
+    Update = 0;
     CourseName = "";
     RaceNo = 0;
     Race;
-    RaceUpdate;
+    RaceStatus;
     Exactas = [];
 
-    constructor(courseName, raceNo) {
+    constructor(update, courseName, raceNo) {
+        this.Update = update;
         this.CourseName = courseName;
         this.RaceNo = raceNo;
     }
